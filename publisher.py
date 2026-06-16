@@ -1,31 +1,24 @@
 import subprocess
 import os
 import tempfile
-import shutil
+import requests
 
 def publish(text):
-    """
-    Публикует пост через официальный навык Binance Square.
-    Сначала пытается через навык, при ошибке использует прямой API.
-    """
     # Сохраняем текст во временный файл
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
         f.write(text)
         text_file = f.name
 
     try:
-        # Пытаемся найти скрипт навыка
+        # Ищем скрипт навыка
         script_path = None
         skill_dir = None
-
-        # Возможные пути
         possible_paths = [
             os.path.expanduser("~/.agents/skills/square-post/scripts/post-text.mjs"),
             os.path.expanduser("~/.skills/skills/square-post/scripts/post-text.mjs"),
             "./node_modules/@binance/square-post/scripts/post-text.mjs",
             "./skills/binance/square-post/scripts/post-text.mjs",
         ]
-
         for path in possible_paths:
             if os.path.exists(path):
                 script_path = path
@@ -36,55 +29,38 @@ def publish(text):
             print("[PUBLISH] Skill not found, using direct API fallback.")
             return publish_direct_api(text)
 
-        # Получаем API-ключ
         api_key = os.getenv("SQUARE_API") or os.getenv("BINANCE_SQUARE_OPENAPI_KEY")
-        if not api_key:
+        if api_key:
+            api_key = api_key.strip()  # удаляем пробелы и переводы строк
+        else:
             print("[PUBLISH] No API key, using direct API fallback.")
             return publish_direct_api(text)
 
-        # Запускаем скрипт с флагом --text-file (если поддерживается)
         env = os.environ.copy()
         env["BINANCE_SQUARE_OPENAPI_KEY"] = api_key
 
         # Пробуем с --text-file
         cmd = ["node", script_path, "--text-file", text_file]
         print(f"[PUBLISH] Trying: {' '.join(cmd)}")
-        result = subprocess.run(
-            cmd,
-            cwd=skill_dir,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
-
+        result = subprocess.run(cmd, cwd=skill_dir, env=env, capture_output=True, text=True, timeout=60)
         print("[PUBLISH] STDOUT:", result.stdout)
         if result.stderr:
             print("[PUBLISH] STDERR:", result.stderr)
 
-        # Если успешно – возвращаем True
         if "Success!" in result.stdout or "Content ID" in result.stdout:
             return True
-        elif result.returncode == 0:
+        if result.returncode == 0:
             return True
 
-        # Если не получилось, пробуем передать текст напрямую (экранируем)
+        # Если не вышло, пробуем передать текст напрямую
         print("[PUBLISH] --text-file failed, trying direct text...")
         cmd2 = ["node", script_path, "--text", text]
-        result2 = subprocess.run(
-            cmd2,
-            cwd=skill_dir,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        result2 = subprocess.run(cmd2, cwd=skill_dir, env=env, capture_output=True, text=True, timeout=60)
         if "Success!" in result2.stdout or "Content ID" in result2.stdout:
             return True
-        elif result2.returncode == 0:
+        if result2.returncode == 0:
             return True
 
-        # Если всё равно не вышло – fallback на прямой API
         print("[PUBLISH] Skill failed, using direct API fallback.")
         return publish_direct_api(text)
 
@@ -98,10 +74,12 @@ def publish(text):
 
 def publish_direct_api(text):
     """Прямой вызов Binance Square API (проверенный метод)."""
-    import requests
     url = "https://www.binance.com/bapi/composite/v1/public/pgc/openApi/content/add"
+    api_key = os.getenv("SQUARE_API")
+    if api_key:
+        api_key = api_key.strip()
     headers = {
-        "X-Square-OpenAPI-Key": os.getenv("SQUARE_API"),
+        "X-Square-OpenAPI-Key": api_key,
         "clienttype": "binanceSkill",
         "Content-Type": "application/json"
     }
