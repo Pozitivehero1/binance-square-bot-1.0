@@ -6,11 +6,9 @@ from publisher import publish
 from trend import get_trending_symbols, get_base_asset
 from history import get_recently_published, add_published, cleanup_history
 
-# Очищаем историю старше 7 дней
 cleanup_history()
 
-# Берём 50 монет для большего выбора
-symbols = get_trending_symbols(100)
+symbols = get_trending_symbols(50)
 print("TRENDING:", symbols)
 print("BOT STARTED")
 
@@ -25,7 +23,7 @@ for s in symbols:
 
     d = build_indicators(raw)
     d["symbol"] = s
-    d["basic"] = get_base_asset(s)   # официальный короткий тикер, например "ELF"
+    d["basic"] = get_base_asset(s)
     score = score_signal(d)
     print(f"{s} score = {score}")
 
@@ -38,7 +36,6 @@ if not candidates:
     print("No good setups found")
     exit()
 
-# Исключаем монеты, опубликованные за последние 3 часа
 recent = get_recently_published(minutes=180)
 print(f"Recently published (last 3h): {recent}")
 
@@ -48,7 +45,6 @@ if not filtered:
     print("All candidates were published recently. Skipping.")
     exit()
 
-# Сортируем по скору (от большего к меньшему)
 filtered.sort(key=lambda x: x["score"], reverse=True)
 best = filtered[0]
 
@@ -56,9 +52,7 @@ print("Generating post for", best["symbol"])
 post = write_post(best)
 print("POST:", post)
 
-# Публикуем через новый publisher (с поддержкой навыка)
-success = publish(post)   # publish возвращает True/False
-
+success = publish(post)
 if success:
     add_published(best["symbol"])
     print("DONE")
