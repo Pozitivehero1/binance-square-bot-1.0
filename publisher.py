@@ -1,28 +1,50 @@
-import requests
+import subprocess
 import os
+import tempfile
 
-def publish(text):
-    url = "https://www.binance.com/bapi/composite/v1/public/pgc/openApi/content/add"
+def publish(text, image_path=None):
+    """
+    Публикует пост через официальный навык Binance Square.
+    Если передан image_path – публикует с изображением.
+    """
+    # Сохраняем текст во временный файл, чтобы избежать проблем с экранированием
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        f.write(text)
+        text_file = f.name
 
-    headers = {
-        "X-Square-OpenAPI-Key": os.getenv("SQUARE_API"),
-        "clienttype": "binanceSkill",
-        "Content-Type": "application/json"
-    }
+    try:
+        if image_path and os.path.exists(image_path):
+            # Пост с изображением
+            cmd = [
+                "npx", "skills", "run", "square-post",
+                "--text", text_file,
+                "--images", image_path
+            ]
+        else:
+            # Текстовый пост
+            cmd = [
+                "npx", "skills", "run", "square-post",
+                "--text", text_file
+            ]
 
-    payload = {
-        "bodyTextOnly": text
-    }
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
 
-    r = requests.post(
-        url,
-        headers=headers,
-        json=payload,
-        timeout=30
-    )
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
+        print("RETURN CODE:", result.returncode)
 
-    print("STATUS:", r.status_code)
-    print("RESPONSE:")
-    print(r.text)
+        # Проверяем успешность по stdout (навык выводит ID поста при успехе)
+        if "Post created" in result.stdout or "Content ID" in result.stdout:
+            return True
+        else:
+            return False
 
-    return r
+    finally:
+        # Удаляем временный файл
+        if os.path.exists(text_file):
+            os.remove(text_file)
