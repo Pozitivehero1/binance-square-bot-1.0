@@ -3,77 +3,82 @@ import os
 import tempfile
 import requests
 
-def publish(text):
-    # Сохраняем текст во временный файл
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
-        f.write(text)
-        text_file = f.name
+def publish(text, image_path=None):
+    """
+    Публикует пост. Если передан image_path, пытается опубликовать с изображением через навык.
+    Если навык не найден или не работает, использует прямой API (без изображения).
+    """
+    # Ищем скрипты навыка
+    script_path = None
+    skill_dir = None
+    possible_paths = [
+        os.path.expanduser("~/.agents/skills/square-post/scripts/post-text.mjs"),
+        os.path.expanduser("~/.skills/skills/square-post/scripts/post-text.mjs"),
+        "./node_modules/@binance/square-post/scripts/post-text.mjs",
+        "./skills/binance/square-post/scripts/post-text.mjs",
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            script_path = path
+            skill_dir = os.path.dirname(os.path.dirname(path))
+            break
 
-    try:
-        # Ищем скрипт навыка
-        script_path = None
-        skill_dir = None
-        possible_paths = [
-            os.path.expanduser("~/.agents/skills/square-post/scripts/post-text.mjs"),
-            os.path.expanduser("~/.skills/skills/square-post/scripts/post-text.mjs"),
-            "./node_modules/@binance/square-post/scripts/post-text.mjs",
-            "./skills/binance/square-post/scripts/post-text.mjs",
-        ]
-        for path in possible_paths:
-            if os.path.exists(path):
-                script_path = path
-                skill_dir = os.path.dirname(os.path.dirname(path))
-                break
+    # Если навык не найден – используем прямой API (без изображения)
+    if not script_path:
+        print("[PUBLISH] Skill not found, using direct API (text only).")
+        return publish_direct_api(text)
 
-        if not script_path:
-            print("[PUBLISH] Skill not found, using direct API fallback.")
-            return publish_direct_api(text)
+    # Получаем и очищаем API-ключ
+    api_key = os.getenv("SQUARE_API") or os.getenv("BINANCE_SQUARE_OPENAPI_KEY")
+    if api_key:
+        api_key = api_key.strip()
+    else:
+        print("[PUBLISH] No API key, using direct API.")
+        return publish_direct_api(text)
 
-        api_key = os.getenv("SQUARE_API") or os.getenv("BINANCE_SQUARE_OPENAPI_KEY")
-        if api_key:
-            api_key = api_key.strip()  # удаляем пробелы и переводы строк
+    env = os.environ.copy()
+    env["BINANCE_SQUARE_OPENAPI_KEY"] = api_key
+
+    # Если есть изображение – используем post-image.mjs
+    if image_path and os.path.exists(image_path):
+        image_script = script_path.replace("post-text.mjs", "post-image.mjs")
+        if os.path.exists(image_script):
+            cmd = ["node", image_script, "--text", text, "--images", image_path]
+            print(f"[PUBLISH] Trying image post: {' '.join(cmd)}")
+            result = subprocess.run(cmd, cwd=skill_dir, env=env,
+                                   capture_output=True, text=True, timeout=60)
+            print("[PUBLISH] STDOUT:", result.stdout)
+            if result.stderr:
+                print("[PUBLISH] STDERR:", result.stderr)
+            if "Success!" in result.stdout or "Content ID" in result.stdout:
+                return True
+            if result.returncode == 0:
+                return True
+            # Если не вышло – пробуем текстовый пост
+            print("[PUBLISH] Image post failed, falling back to text post.")
         else:
-            print("[PUBLISH] No API key, using direct API fallback.")
-            return publish_direct_api(text)
+            print("[PUBLISH] post-image.mjs not found, falling back to text.")
 
-        env = os.environ.copy()
-        env["BINANCE_SQUARE_OPENAPI_KEY"] = api_key
+    # Текстовый пост через навык
+    cmd = ["node", script_path, "--text", text]
+    print(f"[PUBLISH] Trying text post: {' '.join(cmd)}")
+    result = subprocess.run(cmd, cwd=skill_dir, env=env,
+                           capture_output=True, text=True, timeout=60)
+    print("[PUBLISH] STDOUT:", result.stdout)
+    if result.stderr:
+        print("[PUBLISH] STDERR:", result.stderr)
+    if "Success!" in result.stdout or "Content ID" in result.stdout:
+        return True
+    if result.returncode == 0:
+        return True
 
-        # Пробуем с --text-file
-        cmd = ["node", script_path, "--text-file", text_file]
-        print(f"[PUBLISH] Trying: {' '.join(cmd)}")
-        result = subprocess.run(cmd, cwd=skill_dir, env=env, capture_output=True, text=True, timeout=60)
-        print("[PUBLISH] STDOUT:", result.stdout)
-        if result.stderr:
-            print("[PUBLISH] STDERR:", result.stderr)
-
-        if "Success!" in result.stdout or "Content ID" in result.stdout:
-            return True
-        if result.returncode == 0:
-            return True
-
-        # Если не вышло, пробуем передать текст напрямую
-        print("[PUBLISH] --text-file failed, trying direct text...")
-        cmd2 = ["node", script_path, "--text", text]
-        result2 = subprocess.run(cmd2, cwd=skill_dir, env=env, capture_output=True, text=True, timeout=60)
-        if "Success!" in result2.stdout or "Content ID" in result2.stdout:
-            return True
-        if result2.returncode == 0:
-            return True
-
-        print("[PUBLISH] Skill failed, using direct API fallback.")
-        return publish_direct_api(text)
-
-    except Exception as e:
-        print(f"[PUBLISH] ERROR: {e}")
-        return publish_direct_api(text)
-    finally:
-        if os.path.exists(text_file):
-            os.remove(text_file)
+    # Если навык не справился – прямой API
+    print("[PUBLISH] Skill failed, using direct API fallback.")
+    return publish_direct_api(text)
 
 
 def publish_direct_api(text):
-    """Прямой вызов Binance Square API (проверенный метод)."""
+    """Прямой вызов Binance Square API (только текст)."""
     url = "https://www.binance.com/bapi/composite/v1/public/pgc/openApi/content/add"
     api_key = os.getenv("SQUARE_API")
     if api_key:
