@@ -1,7 +1,7 @@
 name: Binance Bot
 
 on:
- 
+
   workflow_dispatch:
 
 jobs:
@@ -19,24 +19,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install system dependencies for plotting
+      - name: Install Binance Square Skill
         run: |
-         sudo apt-get update
-         sudo apt-get install -y fonts-liberation libfreetype6-dev
-
-      - name: Install Binance Square Skill (optional)
-        run: |
-          npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y || echo "Skill install skipped"
+          npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y
           mkdir -p ~/.config/binance-square
           echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
 
-      - name: Install Binance Square Skill
+      - name: Debug skill installation
         run: |
-         npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y
-         mkdir -p ~/.config/binance-square
-         echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
-         ls -la ~/.agents/skills/square-post/scripts/ || echo "Skill not found"
-         
+          ls -la ~/.agents/skills/square-post/scripts/ || echo "Skill not found in ~/.agents"
+          ls -la ./node_modules/@binance/square-post/scripts/ || echo "Skill not found in node_modules"
+
       - name: Cache published history
         uses: actions/cache@v3
         with:
