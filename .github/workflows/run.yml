@@ -20,11 +20,11 @@ jobs:
           node-version: '20'
 
       # Устанавливаем навык через npx skills add
-      - name: Install Binance Square Skill
-        run: |
-          npx skills add https://github.com/binance/binance-skills-hub
-          # Проверяем, что навык установлен
-          ls -la node_modules/@binance/square-post/scripts/
+- name: Install Binance Square Skill
+  run: |
+    npx skills add https://github.com/binance/binance-skills-hub --skill square-post -g -y
+    # Проверяем, что навык установлен
+    ls -la node_modules/@binance/square-post/scripts/ || ls -la ~/.skills/skills/binance-square-post/scripts/
 
       - name: Cache published history
         uses: actions/cache@v3
