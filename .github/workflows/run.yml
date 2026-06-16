@@ -30,6 +30,13 @@ jobs:
           mkdir -p ~/.config/binance-square
           echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
 
+      - name: Install Binance Square Skill
+        run: |
+         npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y
+         mkdir -p ~/.config/binance-square
+         echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
+         ls -la ~/.agents/skills/square-post/scripts/ || echo "Skill not found"
+         
       - name: Cache published history
         uses: actions/cache@v3
         with:
