@@ -5,6 +5,8 @@ from writer import write_post
 from publisher import publish
 from trend import get_trending_symbols, get_base_asset
 from history import get_recently_published, add_published, cleanup_history
+from chart import generate_chart
+import os
 
 cleanup_history()
 
@@ -24,6 +26,7 @@ for s in symbols:
     d = build_indicators(raw)
     d["symbol"] = s
     d["basic"] = get_base_asset(s)
+    d["raw"] = raw  # сохраняем сырые данные для графика
     score = score_signal(d)
     print(f"{s} score = {score}")
 
@@ -52,9 +55,22 @@ print("Generating post for", best["symbol"])
 post = write_post(best)
 print("POST:", post)
 
-success = publish(post)
+# Генерируем график
+chart_path = generate_chart(best["symbol"], best["raw"], best["basic"])
+if chart_path:
+    print(f"[CHART] Chart generated: {chart_path}")
+else:
+    print("[CHART] Chart generation failed, posting text only.")
+
+# Публикуем с графиком (если есть)
+success = publish(post, image_path=chart_path)
+
 if success:
     add_published(best["symbol"])
     print("DONE")
 else:
     print("Publication failed, not saving symbol.")
+
+# Удаляем временный график (если создан)
+if chart_path and os.path.exists(chart_path):
+    os.remove(chart_path)
