@@ -4,60 +4,66 @@ import tempfile
 import shutil
 
 def publish(text):
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+    """
+    Публикует пост через официальный навык Binance Square.
+    Использует локальные скрипты из node_modules.
+    """
+    # Путь к скриптам навыка (после установки через npx skills add)
+    skill_dir = "./node_modules/@binance/square-post"
+    script_path = os.path.join(skill_dir, "scripts", "post-text.mjs")
+    
+    # Если навык не установлен локально, пробуем найти в другом месте
+    if not os.path.exists(script_path):
+        # Пробуем alternative path (если установлен вручную)
+        alt_path = "./skills/binance/square-post/scripts/post-text.mjs"
+        if os.path.exists(alt_path):
+            script_path = alt_path
+            skill_dir = "./skills/binance/square-post"
+        else:
+            print("[ERROR] Square Post skill not found. Run: npx skills add https://github.com/binance/binance-skills-hub")
+            return False
+
+    # Сохраняем текст во временный файл (чтобы избежать проблем с экранированием)
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
         f.write(text)
         text_file = f.name
 
     try:
-        # Список возможных команд
-        commands = []
+        # Получаем API-ключ из переменной окружения
+        api_key = os.getenv("SQUARE_API") or os.getenv("BINANCE_SQUARE_OPENAPI_KEY")
+        
+        # Запускаем скрипт с ключом в окружении
+        env = os.environ.copy()
+        env["BINANCE_SQUARE_OPENAPI_KEY"] = api_key
 
-        # 1. Локальный скрипт (если навык установлен в node_modules)
-        local_script = "./node_modules/@binance/square-post/scripts/post-text.mjs"
-        if os.path.exists(local_script):
-            commands.append(["node", local_script, "--text", text_file])
+        cmd = ["node", script_path, "--text", text_file]
+        
+        print(f"[PUBLISH] Running: {' '.join(cmd)}")
+        
+        result = subprocess.run(
+            cmd,
+            cwd=skill_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
 
-        # 2. Через npx с явным указанием пакета
-        commands.append(["npx", "@binance/square-post", "post-text", "--text", text_file])
+        print("[PUBLISH] STDOUT:", result.stdout)
+        if result.stderr:
+            print("[PUBLISH] STDERR:", result.stderr)
+        print("[PUBLISH] RETURN CODE:", result.returncode)
 
-        # 3. Через npx skills (если установлен глобально)
-        commands.append(["npx", "skills", "run", "square-post", "--text", text_file])
-
-        # 4. Прямой вызов через node_modules/.bin (если есть)
-        bin_script = "./node_modules/.bin/square-post"
-        if os.path.exists(bin_script):
-            commands.append([bin_script, "post-text", "--text", text_file])
-
-        for cmd in commands:
-            try:
-                print(f"Trying: {' '.join(cmd)}")
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    shell=False
-                )
-                print("STDOUT:", result.stdout)
-                print("STDERR:", result.stderr)
-                print("RETURN CODE:", result.returncode)
-
-                # Успех, если в выводе есть Content ID или Post created
-                if "Content ID" in result.stdout or "Post created" in result.stdout:
-                    return True
-                # Если код 0 и нет ошибок — тоже считаем успехом
-                if result.returncode == 0 and "error" not in result.stderr.lower():
-                    return True
-            except Exception as e:
-                print(f"Command failed: {e}")
-                continue
-
-        # Если ни одна команда не сработала
-        print("All commands failed.")
-        return False
+        # Проверяем успешность
+        if "Success!" in result.stdout or "Content ID" in result.stdout:
+            return True
+        elif result.returncode == 0:
+            return True
+        else:
+            return False
 
     except Exception as e:
-        print("PUBLISH ERROR:", e)
+        print(f"[PUBLISH] ERROR: {e}")
         return False
     finally:
         if os.path.exists(text_file):
