@@ -2,6 +2,7 @@ import subprocess
 import os
 
 def publish(text, image_path=None):
+    """Публикует пост через официальный навык Binance Square."""
     skill_dir = find_skill_dir()
     if not skill_dir:
         print("[PUBLISH] Skill not found.")
@@ -20,11 +21,11 @@ def publish(text, image_path=None):
     if image_path and os.path.exists(image_path):
         script = os.path.join(skill_dir, "scripts", "post-image.mjs")
         cmd = ["node", script, "--text", text, "--images", image_path]
-        print(f"[PUBLISH] Running: {' '.join(cmd)}")
+        print(f"[PUBLISH] Running image post: {' '.join(cmd)}")
     else:
         script = os.path.join(skill_dir, "scripts", "post-text.mjs")
         cmd = ["node", script, "--text", text]
-        print(f"[PUBLISH] Running: {' '.join(cmd)}")
+        print(f"[PUBLISH] Running text post: {' '.join(cmd)}")
 
     try:
         result = subprocess.run(
@@ -47,15 +48,24 @@ def publish(text, image_path=None):
 
 
 def find_skill_dir():
-    # Пути, где может находиться установленный навык
-    possible_paths = [
-        os.path.join(os.getenv("GITHUB_WORKSPACE", "."), ".agents", "skills", "square-post"),
+    """Ищет директорию установленного навыка square-post."""
+    # Пути внутри рабочей директории (где выполняется checkout)
+    base_paths = [
+        os.getenv("GITHUB_WORKSPACE", "."),
+        ".",
+    ]
+    for base in base_paths:
+        candidate = os.path.join(base, ".agents", "skills", "square-post")
+        if os.path.exists(os.path.join(candidate, "scripts", "post-image.mjs")):
+            return candidate
+
+    # Альтернативные пути
+    alt_paths = [
         os.path.expanduser("~/.agents/skills/square-post"),
-        "./.agents/skills/square-post",
         "./node_modules/@binance/square-post",
         "./skills/binance/square-post",
     ]
-    for d in possible_paths:
-        if os.path.exists(os.path.join(d, "scripts", "post-image.mjs")):
-            return d
+    for path in alt_paths:
+        if os.path.exists(os.path.join(path, "scripts", "post-image.mjs")):
+            return path
     return None
