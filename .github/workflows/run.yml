@@ -2,7 +2,7 @@ name: Binance Bot
 
 on:
 
-  workflow_dispatch:         # ручной запуск
+  workflow_dispatch:
 
 jobs:
   run:
@@ -14,6 +14,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      # Устанавливаем Node.js (нужен для навыка)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Устанавливаем официальный навык Binance Square
+      - name: Install Binance Square Skill
+        run: |
+          npx skills add https://github.com/binance/binance-skills-hub/tree/main/skills/binance/square-post
+          # Сохраняем API-ключ в конфиг навыка
+          mkdir -p ~/.config/binance-square
+          echo "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
 
       - name: Cache published history
         uses: actions/cache@v3
@@ -28,4 +41,4 @@ jobs:
       - run: python main.py
         env:
           MISTRAL_API: ${{ secrets.MISTRAL_API }}
-          SQUARE_API: ${{ secrets.SQUARE_API }}
+          # SQUARE_API теперь не нужен в Python, он в конфиге навыка
