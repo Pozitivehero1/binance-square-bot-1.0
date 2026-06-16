@@ -25,6 +25,13 @@ jobs:
           mkdir -p ~/.config/binance-square
           echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
 
+      - name: Debug skill installation
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          ls -la $GITHUB_WORKSPACE/.agents/skills/square-post/scripts/ || echo "Not found in GITHUB_WORKSPACE"
+          ls -la ./.agents/skills/square-post/scripts/ || echo "Not found in ./"
+          find . -name "post-image.mjs" -o -name "post-text.mjs" 2>/dev/null || echo "No scripts found"
+
       - name: Cache published history
         uses: actions/cache@v3
         with:
