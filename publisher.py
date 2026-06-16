@@ -1,49 +1,64 @@
 import subprocess
 import os
 import tempfile
+import shutil
 
 def publish(text):
-    """
-    Публикует пост через официальный навык Binance Square.
-    Возвращает True при успехе, иначе False.
-    """
-    # Сохраняем текст во временный файл
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
         f.write(text)
         text_file = f.name
 
     try:
-        # Пробуем запустить скрипт напрямую (если навык установлен локально)
-        script_path = "./node_modules/@binance/square-post/scripts/post-text.mjs"
-        if os.path.exists(script_path):
-            cmd = ["node", script_path, "--text", text_file]
-        else:
-            # Альтернатива: используем npx skills execute
-            cmd = ["npx", "skills", "execute", "square-post", "--text", text_file]
+        # Список возможных команд
+        commands = []
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        # 1. Локальный скрипт (если навык установлен в node_modules)
+        local_script = "./node_modules/@binance/square-post/scripts/post-text.mjs"
+        if os.path.exists(local_script):
+            commands.append(["node", local_script, "--text", text_file])
 
-        print("STDOUT:", result.stdout)
-        print("STDERR:", result.stderr)
-        print("RETURN CODE:", result.returncode)
+        # 2. Через npx с явным указанием пакета
+        commands.append(["npx", "@binance/square-post", "post-text", "--text", text_file])
 
-        # Успех, если в выводе есть "Content ID" или "Post created" или код 0
-        if "Content ID" in result.stdout or "Post created" in result.stdout:
-            return True
-        # Если код возврата 0, но мы не нашли ключевых фраз — тоже считаем успехом
-        if result.returncode == 0:
-            return True
+        # 3. Через npx skills (если установлен глобально)
+        commands.append(["npx", "skills", "run", "square-post", "--text", text_file])
+
+        # 4. Прямой вызов через node_modules/.bin (если есть)
+        bin_script = "./node_modules/.bin/square-post"
+        if os.path.exists(bin_script):
+            commands.append([bin_script, "post-text", "--text", text_file])
+
+        for cmd in commands:
+            try:
+                print(f"Trying: {' '.join(cmd)}")
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    shell=False
+                )
+                print("STDOUT:", result.stdout)
+                print("STDERR:", result.stderr)
+                print("RETURN CODE:", result.returncode)
+
+                # Успех, если в выводе есть Content ID или Post created
+                if "Content ID" in result.stdout or "Post created" in result.stdout:
+                    return True
+                # Если код 0 и нет ошибок — тоже считаем успехом
+                if result.returncode == 0 and "error" not in result.stderr.lower():
+                    return True
+            except Exception as e:
+                print(f"Command failed: {e}")
+                continue
+
+        # Если ни одна команда не сработала
+        print("All commands failed.")
         return False
 
     except Exception as e:
         print("PUBLISH ERROR:", e)
         return False
     finally:
-        # Удаляем временный файл
         if os.path.exists(text_file):
             os.remove(text_file)
