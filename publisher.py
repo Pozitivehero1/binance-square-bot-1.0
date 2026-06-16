@@ -1,45 +1,56 @@
 import subprocess
 import os
 import tempfile
-import shutil
+import glob
 
 def publish(text):
     """
     Публикует пост через официальный навык Binance Square.
-    Использует локальные скрипты из node_modules.
+    Ищет скрипты в стандартных местах установки.
     """
-    # Путь к скриптам навыка (после установки через npx skills add)
-    skill_dir = "./node_modules/@binance/square-post"
-    script_path = os.path.join(skill_dir, "scripts", "post-text.mjs")
-    
-    # Если навык не установлен локально, пробуем найти в другом месте
-    if not os.path.exists(script_path):
-        # Пробуем alternative path (если установлен вручную)
-        alt_path = "./skills/binance/square-post/scripts/post-text.mjs"
-        if os.path.exists(alt_path):
-            script_path = alt_path
-            skill_dir = "./skills/binance/square-post"
-        else:
-            print("[ERROR] Square Post skill not found. Run: npx skills add https://github.com/binance/binance-skills-hub")
-            return False
-
-    # Сохраняем текст во временный файл (чтобы избежать проблем с экранированием)
+    # Сохраняем текст во временный файл
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
         f.write(text)
         text_file = f.name
 
     try:
-        # Получаем API-ключ из переменной окружения
-        api_key = os.getenv("SQUARE_API") or os.getenv("BINANCE_SQUARE_OPENAPI_KEY")
+        # Возможные пути к скриптам навыка
+        possible_paths = [
+            os.path.expanduser("~/.agents/skills/square-post/scripts/post-text.mjs"),
+            os.path.expanduser("~/.skills/skills/square-post/scripts/post-text.mjs"),
+            "./node_modules/@binance/square-post/scripts/post-text.mjs",
+            "./skills/binance/square-post/scripts/post-text.mjs",
+        ]
         
+        script_path = None
+        skill_dir = None
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                script_path = path
+                skill_dir = os.path.dirname(os.path.dirname(path))  # папка навыка
+                break
+        
+        if not script_path:
+            print("[ERROR] Square Post skill not found. Tried:")
+            for path in possible_paths:
+                print(f"  - {path}")
+            return False
+
+        # Получаем API-ключ
+        api_key = os.getenv("SQUARE_API") or os.getenv("BINANCE_SQUARE_OPENAPI_KEY")
+        if not api_key:
+            print("[ERROR] SQUARE_API environment variable not set")
+            return False
+
         # Запускаем скрипт с ключом в окружении
         env = os.environ.copy()
         env["BINANCE_SQUARE_OPENAPI_KEY"] = api_key
 
         cmd = ["node", script_path, "--text", text_file]
-        
         print(f"[PUBLISH] Running: {' '.join(cmd)}")
-        
+        print(f"[PUBLISH] Skill dir: {skill_dir}")
+
         result = subprocess.run(
             cmd,
             cwd=skill_dir,
