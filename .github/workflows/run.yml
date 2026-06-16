@@ -1,7 +1,7 @@
 name: Binance Bot
 
 on:
-
+  
   workflow_dispatch:
 
 jobs:
@@ -15,17 +15,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      # Node.js обязателен для запуска скриптов навыка
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # Устанавливаем навык через npx skills add
       - name: Install Binance Square Skill
         run: |
-          npx skills add https://github.com/binance/binance-skills-hub --skill square-post -g -y
-          # Проверяем, что навык установлен
-          ls -la node_modules/@binance/square-post/scripts/ || ls -la ~/.skills/skills/binance-square-post/scripts/
+          npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y
+          # Проверяем, куда установился навык
+          find . -name "post-text.mjs" 2>/dev/null || echo "Not found in current dir"
+          ls -la ~/.agents/skills/square-post/scripts/ 2>/dev/null || echo "Not found in ~/.agents"
+          ls -la node_modules/@binance/square-post/scripts/ 2>/dev/null || echo "Not found in node_modules"
 
       - name: Cache published history
         uses: actions/cache@v3
