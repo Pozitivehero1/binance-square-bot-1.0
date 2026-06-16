@@ -41,4 +41,4 @@ jobs:
       - run: python main.py
         env:
           MISTRAL_API: ${{ secrets.MISTRAL_API }}
-          # SQUARE_API теперь не нужен в Python, он в конфиге навыка
+          # SQUARE_API теперь используется только для сохранения в конфиг навыка
