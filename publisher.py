@@ -4,38 +4,35 @@ import tempfile
 import glob
 
 def publish(text):
-    """
-    Публикует пост через официальный навык Binance Square.
-    Ищет скрипты в стандартных местах установки.
-    """
     # Сохраняем текст во временный файл
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
         f.write(text)
         text_file = f.name
 
     try:
-        # Возможные пути к скриптам навыка
-        possible_paths = [
-            os.path.expanduser("~/.agents/skills/square-post/scripts/post-text.mjs"),
-            os.path.expanduser("~/.skills/skills/square-post/scripts/post-text.mjs"),
-            "./node_modules/@binance/square-post/scripts/post-text.mjs",
-            "./skills/binance/square-post/scripts/post-text.mjs",
+        # Ищем скрипт post-text.mjs в стандартных местах
+        possible_roots = [
+            os.path.expanduser("~"),
+            ".",
         ]
-        
         script_path = None
         skill_dir = None
-        
-        for path in possible_paths:
-            if os.path.exists(path):
-                script_path = path
-                skill_dir = os.path.dirname(os.path.dirname(path))  # папка навыка
+
+        for root in possible_roots:
+            # Ищем рекурсивно
+            for dirpath, dirnames, filenames in os.walk(root):
+                if "post-text.mjs" in filenames:
+                    script_path = os.path.join(dirpath, "post-text.mjs")
+                    skill_dir = dirpath
+                    break
+            if script_path:
                 break
-        
+
         if not script_path:
-            print("[ERROR] Square Post skill not found. Tried:")
-            for path in possible_paths:
-                print(f"  - {path}")
+            print("[ERROR] Square Post skill not found.")
             return False
+
+        print(f"[PUBLISH] Found skill at: {script_path}")
 
         # Получаем API-ключ
         api_key = os.getenv("SQUARE_API") or os.getenv("BINANCE_SQUARE_OPENAPI_KEY")
@@ -49,7 +46,6 @@ def publish(text):
 
         cmd = ["node", script_path, "--text", text_file]
         print(f"[PUBLISH] Running: {' '.join(cmd)}")
-        print(f"[PUBLISH] Skill dir: {skill_dir}")
 
         result = subprocess.run(
             cmd,
@@ -65,7 +61,6 @@ def publish(text):
             print("[PUBLISH] STDERR:", result.stderr)
         print("[PUBLISH] RETURN CODE:", result.returncode)
 
-        # Проверяем успешность
         if "Success!" in result.stdout or "Content ID" in result.stdout:
             return True
         elif result.returncode == 0:
