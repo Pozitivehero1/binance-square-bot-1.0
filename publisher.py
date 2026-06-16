@@ -7,30 +7,34 @@ import glob
 def publish(text, image_path=None):
     """
     Публикует пост с текстом и опционально с изображением.
-    Использует официальный навык Binance Square, если найден, иначе прямой API.
+    Сначала ищет навык Binance Square, если найден – использует его (с поддержкой изображений),
+    иначе падает на прямой API (только текст).
     """
-    # 1. Находим скрипты навыка
-    skill_paths = [
-        os.path.expanduser("~/.agents/skills/square-post/scripts/post-text.mjs"),
-        os.path.expanduser("~/.skills/skills/square-post/scripts/post-text.mjs"),
-        "./node_modules/@binance/square-post/scripts/post-text.mjs",
-        "./skills/binance/square-post/scripts/post-text.mjs",
-    ]
-    script_path = None
-    skill_dir = None
-    for p in skill_paths:
-        if os.path.exists(p):
-            script_path = p
-            skill_dir = os.path.dirname(os.path.dirname(p))
-            break
-
+    # 1. Находим скрипт навыка
+    script_path = find_skill_script()
     if script_path:
         print(f"[PUBLISH] Found skill at: {script_path}")
-        # Публикация через навык
+        skill_dir = os.path.dirname(os.path.dirname(script_path))
         return publish_with_skill(text, image_path, script_path, skill_dir)
     else:
         print("[PUBLISH] Skill not found, using direct API (text only).")
         return publish_direct_api(text)
+
+
+def find_skill_script():
+    """Ищет post-text.mjs в стандартных местах установки навыков."""
+    patterns = [
+        os.path.expanduser("~/.agents/skills/*/scripts/post-text.mjs"),
+        os.path.expanduser("~/.skills/skills/*/scripts/post-text.mjs"),
+        "./node_modules/@binance/*/scripts/post-text.mjs",
+        "./skills/*/scripts/post-text.mjs",
+    ]
+    for pattern in patterns:
+        matches = glob.glob(pattern)
+        if matches:
+            # Возвращаем первый найденный
+            return matches[0]
+    return None
 
 
 def publish_with_skill(text, image_path, script_path, skill_dir):
