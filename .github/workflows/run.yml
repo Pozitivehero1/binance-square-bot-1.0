@@ -25,11 +25,6 @@ jobs:
           mkdir -p ~/.config/binance-square
           echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
 
-      - name: Debug skill installation
-        run: |
-          ls -la ~/.agents/skills/square-post/scripts/ || echo "Skill not found in ~/.agents"
-          ls -la ./node_modules/@binance/square-post/scripts/ || echo "Skill not found in node_modules"
-
       - name: Cache published history
         uses: actions/cache@v3
         with:
