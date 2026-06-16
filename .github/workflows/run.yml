@@ -1,8 +1,8 @@
 name: Binance Bot
 
 on:
-  
-  workflow_dispatch:
+ 
+  workflow_dispatch:          # ручной запуск
 
 jobs:
   run:
@@ -15,18 +15,24 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Node.js нужен для работы навыка
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      # Устанавливаем официальный навык Binance Square
       - name: Install Binance Square Skill
         run: |
           npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y
-          # Проверяем, куда установился навык
+          # Сохраняем API-ключ в конфиг навыка
+          mkdir -p ~/.config/binance-square
+          echo "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
+          # Проверяем, что навык установлен и показываем путь
+          echo "Searching for post-text.mjs..."
+          find /home/runner -name "post-text.mjs" 2>/dev/null || echo "Not found"
           find . -name "post-text.mjs" 2>/dev/null || echo "Not found in current dir"
-          ls -la ~/.agents/skills/square-post/scripts/ 2>/dev/null || echo "Not found in ~/.agents"
-          ls -la node_modules/@binance/square-post/scripts/ 2>/dev/null || echo "Not found in node_modules"
 
+      # Кэшируем историю публикаций, чтобы избежать дублей
       - name: Cache published history
         uses: actions/cache@v3
         with:
