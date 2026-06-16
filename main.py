@@ -10,7 +10,7 @@ import os
 
 cleanup_history()
 
-symbols = get_trending_symbols(50)
+symbols = get_trending_symbols(100)
 print("TRENDING:", symbols)
 print("BOT STARTED")
 
