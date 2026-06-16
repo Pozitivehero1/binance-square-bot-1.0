@@ -6,11 +6,8 @@ import glob
 
 def publish(text, image_path=None):
     """
-    Публикует пост с текстом и опционально с изображением.
-    Сначала ищет навык Binance Square, если найден – использует его (с поддержкой изображений),
-    иначе падает на прямой API (только текст).
+    Публикует пост. Сначала пытается через навык (с изображением), затем через прямой API.
     """
-    # 1. Находим скрипт навыка
     script_path = find_skill_script()
     if script_path:
         print(f"[PUBLISH] Found skill at: {script_path}")
@@ -23,6 +20,12 @@ def publish(text, image_path=None):
 
 def find_skill_script():
     """Ищет post-text.mjs в стандартных местах установки навыков."""
+    # 1. Самый вероятный путь (из логов установки)
+    primary = os.path.expanduser("~/.agents/skills/square-post/scripts/post-text.mjs")
+    if os.path.exists(primary):
+        return primary
+
+    # 2. Другие возможные пути
     patterns = [
         os.path.expanduser("~/.agents/skills/*/scripts/post-text.mjs"),
         os.path.expanduser("~/.skills/skills/*/scripts/post-text.mjs"),
@@ -32,8 +35,12 @@ def find_skill_script():
     for pattern in patterns:
         matches = glob.glob(pattern)
         if matches:
-            # Возвращаем первый найденный
             return matches[0]
+
+    # 3. Если ничего не найдено, выведем отладку
+    print("[DEBUG] No skill script found. Checked:")
+    for p in [primary] + patterns:
+        print(f"  - {p}")
     return None
 
 
