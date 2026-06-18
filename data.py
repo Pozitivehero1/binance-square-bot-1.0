@@ -8,7 +8,7 @@ def binance_spot(symbol):
         url = f"{BINANCE_API}/api/v3/klines?symbol={symbol}&interval=15m&limit=200"
         r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
         data = r.json()
-        if not isinstance(data, list):
+        if not isinstance(data, list) or len(data) < 20:   # <-- проверка минимальной длины
             return None
         return data
     except:
@@ -21,7 +21,11 @@ def bybit(symbol):
         data = r.json()
         if "result" not in data:
             return None
-        return data["result"]["list"]
+        # Bybit возвращает список списков, проверим длину
+        lst = data["result"]["list"]
+        if not isinstance(lst, list) or len(lst) < 20:
+            return None
+        return lst
     except:
         return None
 
