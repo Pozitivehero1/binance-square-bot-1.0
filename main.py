@@ -7,6 +7,7 @@ from trend import get_trending_symbols, get_base_asset
 from history import get_recently_published, add_published, cleanup_history
 from chart import generate_chart
 import os
+import traceback   # для детальной печати ошибок (опционально)
 
 cleanup_history()
 
@@ -18,21 +19,33 @@ candidates = []
 
 for s in symbols:
     print(f"Analyzing {s}")
-    raw = get_data(s)
-    if raw is None:
-        print(f"Skip {s} – no data")
+    try:
+        raw = get_data(s)
+        if raw is None:
+            print(f"Skip {s} – no data")
+            continue
+
+        d = build_indicators(raw)
+        if d is None:
+            print(f"Skip {s} – insufficient data for indicators")
+            continue
+
+        d["symbol"] = s
+        d["basic"] = get_base_asset(s)
+        d["raw"] = raw  # сохраняем сырые данные для графика
+
+        score = score_signal(d)
+        print(f"{s} score = {score}")
+
+        if score >= 4:
+            d["score"] = score
+            candidates.append(d)
+
+    except Exception as e:
+        # Логируем ошибку, но не прерываем выполнение
+        print(f"Error analyzing {s}: {e}")
+        # traceback.print_exc()  # раскомментировать для отладки
         continue
-
-    d = build_indicators(raw)
-    d["symbol"] = s
-    d["basic"] = get_base_asset(s)
-    d["raw"] = raw  # сохраняем сырые данные для графика
-    score = score_signal(d)
-    print(f"{s} score = {score}")
-
-    if score >= 4:
-        d["score"] = score
-        candidates.append(d)
 
 print("Candidates:", len(candidates))
 if not candidates:
