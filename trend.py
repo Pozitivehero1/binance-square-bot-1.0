@@ -1,16 +1,11 @@
 import requests
+import re
 
-# Базовый URL зеркала Binance (доступно из любого региона)
 BINANCE_API = "https://data-api.binance.vision"
 
-# Глобальный кэш для exchangeInfo
 _EXCHANGE_INFO = None
 
 def get_base_asset(symbol):
-    """
-    Возвращает официальный базовый актив (короткий тикер) для символа.
-    Например: 'BTCUSDT' → 'BTC', 'PHBUSDT' → 'PHB'.
-    """
     global _EXCHANGE_INFO
     if _EXCHANGE_INFO is None:
         try:
@@ -30,7 +25,6 @@ def get_base_asset(symbol):
     return _EXCHANGE_INFO.get(symbol, symbol.replace("USDT", ""))
 
 def get_trending_symbols(limit=100):
-    """Возвращает топ-N USDT-пар по объёму и изменению за 24ч."""
     try:
         url = f"{BINANCE_API}/api/v3/ticker/24hr"
         r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
@@ -50,6 +44,11 @@ def get_trending_symbols(limit=100):
             continue
         symbol = item.get("symbol")
         if not symbol or not symbol.endswith("USDT"):
+            continue
+        # Проверяем, что символ состоит только из латинских букв и цифр (без мусора)
+        # Допустим, что baseAsset + "USDT" — например, BTCUSDT
+        # Используем регулярное выражение: только A-Z и цифры, заканчивается на USDT
+        if not re.match(r'^[A-Z0-9]+USDT$', symbol):
             continue
         try:
             volume = float(item.get("quoteVolume", 0))
