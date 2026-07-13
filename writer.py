@@ -51,14 +51,14 @@ def _levels(ind, direction: str) -> Dict[str, float]:
 
 
 _LONG_HEADS = [
-    "🚀 {basic}/USDT — сетап на лонг",
-    "📈 {basic}/USDT: бычий сигнал",
-    "🟢 {basic}/USDT — покупатели активизировались",
+    "🚀 ${basic}/USDT — сетап на лонг",
+    "📈 ${basic}/USDT: бычий сигнал",
+    "🟢 ${basic}/USDT — покупатели активизировались",
 ]
 _SHORT_HEADS = [
-    "🔻 {basic}/USDT — сетап на шорт",
-    "📉 {basic}/USDT: медвежий сигнал",
-    "🔴 {basic}/USDT — давление продавцов",
+    "🔻 ${basic}/USDT — сетап на шорт",
+    "📉 ${basic}/USDT: медвежий сигнал",
+    "🔴 ${basic}/USDT — давление продавцов",
 ]
 
 
