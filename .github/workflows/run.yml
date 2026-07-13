@@ -1,7 +1,6 @@
 name: Binance Bot
 
 on:
-
   workflow_dispatch:
 
 jobs:
@@ -40,6 +39,14 @@ jobs:
           restore-keys: |
             published-history-
 
+      - name: Cache post memory
+        uses: actions/cache@v3
+        with:
+          path: post_memory.json
+          key: post-memory-${{ github.run_id }}
+          restore-keys: |
+            post-memory-
+
       - run: pip install -r requirements.txt
 
       - run: python main.py
@@ -47,3 +54,4 @@ jobs:
           MISTRAL_API: ${{ secrets.MISTRAL_API }}
           SQUARE_API: ${{ secrets.SQUARE_API }}
           BINANCE_SQUARE_OPENAPI_KEY: ${{ secrets.SQUARE_API }}
+          REFERRAL_LINK: ${{ secrets.REFERRAL_LINK }}
