@@ -55,3 +55,7 @@ jobs:
           SQUARE_API: ${{ secrets.SQUARE_API }}
           BINANCE_SQUARE_OPENAPI_KEY: ${{ secrets.SQUARE_API }}
           REFERRAL_LINK: ${{ secrets.REFERRAL_LINK }}
+          LOG_LEVEL: INFO
+          COOLDOWN_MIN: 180
+          TOP_SYMBOLS: 80
+          MAX_FUNDING_ABS: 0.001
