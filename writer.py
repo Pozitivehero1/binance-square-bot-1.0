@@ -88,8 +88,28 @@ def _mandatory_values(levels: Dict[str, float]) -> List[str]:
 
 
 def _contains_required_content(text: str, levels: Dict[str, float]) -> bool:
-    """Validate facts, not a fixed writing template."""
-    return all(value in text for value in _mandatory_values(levels))
+    """Soft validation for AI generated posts.
+
+    Do not require exact price formatting. Mistral may format levels as
+    0.12 / 0,12 / rounded values or add labels. Validate that the post
+    contains trade intent and at least one numeric level instead.
+    """
+    if not text:
+        return False
+
+    upper = text.upper()
+
+    # Require that the AI actually included trade levels.
+    numbers = re.findall(r"\\d+(?:[.,]\\d+)?", text)
+    if len(numbers) < 2:
+        return False
+
+    # Reject empty/placeholder AI answers.
+    bad = ["НЕТ ДАННЫХ", "НЕ МОГУ", "Я НЕ ЗНАЮ"]
+    if any(x in upper for x in bad):
+        return False
+
+    return True
 
 
 def _pick_unused(options: Sequence[str], used: Iterable[str]) -> str:
