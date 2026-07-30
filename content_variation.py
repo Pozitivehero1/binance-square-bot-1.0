@@ -57,13 +57,13 @@ POST_STYLES: Tuple[PostStyle, ...] = (
     PostStyle("market_letter", "Письмо с рынка", "letter", "notebook"),
     PostStyle("voice_note", "Голосовая заметка", "voice", "inline"),
     PostStyle("red_team", "Проверка контраргументом", "red_team", "risk_reward"),
-    PostStyle("three_gates", "Три допуска к сделке", "gates", "numbered"),
+    PostStyle("three_checks", "Три проверки сценария", "checks", "numbered"),
     PostStyle("trigger_watch", "Ждём триггер", "trigger", "route"),
     PostStyle("range_map", "Карта диапазона", "map", "card"),
     PostStyle("momentum_audit", "Аудит импульса", "audit", "compact_grid"),
     PostStyle("btc_lens", "Сигнал через контекст BTC", "btc", "inline"),
     PostStyle("risk_memo", "Риск-мемо", "memo", "risk_reward"),
-    PostStyle("terminal_feed", "Терминальная лента", "terminal", "terminal", "short"),
+    PostStyle("market_brief", "Короткая заметка рынка", "brief", "terminal", "short"),
 )
 
 
