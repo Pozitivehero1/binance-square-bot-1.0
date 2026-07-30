@@ -1,74 +1,92 @@
-name: Binance Square Bot
+name: Binance Square Signal Bot
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/30 * * * *"
+
+
+concurrency:
+  group: binance-square-signal-bot
+  cancel-in-progress: false
 
 jobs:
-
-  run-bot:
+  run:
     runs-on: ubuntu-latest
-
-    timeout-minutes: 10
-
-    env:
-      MISTRAL_API: ${{ secrets.MISTRAL_API }}
-      SQUARE_API: ${{ secrets.SQUARE_API }}
-      BINANCE_SQUARE_OPENAPI_KEY: ${{ secrets.BINANCE_SQUARE_OPENAPI_KEY }}
-
-      REFERRAL_LINK: ${{ secrets.REFERRAL_LINK }}
-
-      LOG_LEVEL: INFO
-
-      # Signal settings
-      COOLDOWN_MIN: 180
-      TOP_SYMBOLS: 80
-      MAX_FUNDING_ABS: 0.001
-
-      # AI Writer
-      ENABLE_AI_POLISH: "true"
-      USE_MISTRAL: "true"
-      MISTRAL_MODEL: "mistral-small-latest"
-
-      # Human post generation
-      AI_VARIANTS: 3
-      AI_HUMAN_MODE: "true"
+    timeout-minutes: 25
 
     steps:
+      - uses: actions/checkout@v4
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
-      - name: Install dependencies
+      - name: Install Binance Square skill
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y
+          mkdir -p ~/.config/binance-square
+          echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
 
+      - name: Restore published history
+        uses: actions/cache@v4
+        with:
+          path: published_history.json
+          key: published-history-${{ github.run_id }}
+          restore-keys: |
+            published-history-
 
-      - name: Check environment
-        run: |
-          python - <<'PY'
-          import os
+      - name: Restore post memory
+        uses: actions/cache@v4
+        with:
+          path: post_memory.json
+          key: post-memory-${{ github.run_id }}
+          restore-keys: |
+            post-memory-
 
-          print("MISTRAL_API:",
-                "OK" if os.getenv("MISTRAL_API") else "MISSING")
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
 
-          print("ENABLE_AI_POLISH:",
-                os.getenv("ENABLE_AI_POLISH"))
+      - name: Run offline safety tests
+        run: python self_test.py
+        env:
+          CONTENT_MODE: deterministic
+          POST_MAX_CHARS: 900
 
-          print("USE_MISTRAL:",
-                os.getenv("USE_MISTRAL"))
-          PY
+      - name: Scan, generate and publish
+        run: python main.py
+        env:
+          MISTRAL_API: ${{ secrets.MISTRAL_API }}
+          MISTRAL_MODEL: mistral-small-latest
+          CONTENT_MODE: ai_first
+          AI_VARIANTS: 4
+          AI_TEMPERATURE: 0.55
+          AI_MIN_VALID: 2
 
+          SQUARE_API: ${{ secrets.SQUARE_API }}
+          BINANCE_SQUARE_OPENAPI_KEY: ${{ secrets.SQUARE_API }}
 
-      - name: Run bot
-        run: |
-          python main.py
+          LOG_LEVEL: INFO
+          COOLDOWN_MIN: 180
+          TOP_SYMBOLS: 80
+          SHORTLIST_SIZE: 18
+          FINAL_CANDIDATES: 10
+          MIN_RR: 1.5
+          MIN_MTF_ALIGN: 0.5
+          MIN_VOLUME_REL: 0.75
+          MAX_FUNDING_ABS: 0.001
+          STRICT_BTC_FILTER: 1
+          ENABLE_BALANCED_FALLBACK: 0
+
+          POST_VARIANTS: 8
+          POST_MIN_CHARS: 260
+          POST_MAX_CHARS: 900
+          MIN_POST_QUALITY: 78
+          MAX_POST_SIMILARITY: 0.56
+
+          PUBLISH_IMAGES: 1
+          PUBLISH_MEDIA_MODE: chart
+          DRY_RUN: 0
