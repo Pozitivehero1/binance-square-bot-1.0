@@ -260,20 +260,20 @@ class PostMemory:
         candidate = self.normalize_text(title)
         if not candidate:
             return False
-        for item in self.items[-60:]:
+        for item in self.items[-100:]:
             existing = item.get("title_signature") or self.normalize_text(item.get("title", ""))
             if SequenceMatcher(None, candidate, existing).ratio() >= threshold:
                 return True
         return False
 
-    def similarity_score(self, text: str, n: int = 60) -> float:
+    def similarity_score(self, text: str, n: int = 100) -> float:
         candidate = self._features(text)
         best = 0.0
         for existing in self._feature_cache[-n:]:
             best = max(best, self._compare_features(candidate, existing))
         return best
 
-    def most_similar(self, text: str, n: int = 60) -> Tuple[float, str]:
+    def most_similar(self, text: str, n: int = 100) -> Tuple[float, str]:
         candidate = self._features(text)
         best_score = 0.0
         best_index = -1
@@ -285,5 +285,5 @@ class PostMemory:
         best_text = str(self.items[best_index].get("text", "")) if best_index >= 0 else ""
         return best_score, best_text
 
-    def is_similar(self, text: str, threshold: float = 0.56) -> bool:
+    def is_similar(self, text: str, threshold: float = 0.45) -> bool:
         return self.similarity_score(text) >= threshold

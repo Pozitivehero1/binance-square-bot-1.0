@@ -1,4 +1,4 @@
-Offline verification completed on 2026-07-30:
+Offline verification completed on 2026-07-31:
 - Python syntax compilation: passed for all modules
 - LONG strict setup: passed
 - SHORT strict setup: passed
@@ -6,9 +6,15 @@ Offline verification completed on 2026-07-30:
 - Cashtag count $TICKER: 1-3 occurrences, passed
 - Mistral JSON batch mock: one request, four valid candidates
 - Fact lock and unexpected-number guard: passed
-- Deterministic fallback: 4 layouts, 7 signal angles
-- Maximum fallback similarity: 0.334
-- Average fallback length: 604 characters
+- Deterministic fallback batch: 4 layouts, 7 signal angles
+- Maximum similarity inside one fallback batch: 0.361
+- Average fallback length: 628 characters
+- Persistent anti-duplicate window: last 100 posts
+- Hard publication similarity gate: 0.45
+- Exact-pipeline repetition stress test: 150/150 posts selected
+- Maximum accepted similarity in 150-post stress test: 0.445
+- Average similarity in 150-post stress test: 0.366
+- 95th percentile similarity in 150-post stress test: 0.434
 - Card generation: passed
 - Mobile chart generation: passed
 - Publisher command and environment-key handoff: passed

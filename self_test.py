@@ -175,7 +175,7 @@ def _test_content_diversity() -> None:
     assert len(drafts) >= 6, f"Not enough candidates: {len(drafts)}"
     assert len(styles) >= 4, f"Not enough layouts: {styles}"
     assert len(signals) >= 5, f"Not enough signal angles: {signals}"
-    assert max(similarities) < 0.56, f"Variants are too similar: {max(similarities):.3f}"
+    assert max(similarities) < 0.45, f"Variants are too similar: {max(similarities):.3f}"
     assert max(lengths) <= 900, lengths
     print(
         f"DIVERSITY: OK | layouts={len(styles)} | signals={len(signals)} | "

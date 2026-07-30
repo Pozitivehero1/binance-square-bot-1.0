@@ -53,7 +53,7 @@ ENABLE_BALANCED_FALLBACK = os.getenv("ENABLE_BALANCED_FALLBACK", "0").lower() in
     "1", "true", "yes"
 }
 POST_VARIANTS = max(4, min(int(os.getenv("POST_VARIANTS", "8")), 16))
-MAX_POST_SIMILARITY = float(os.getenv("MAX_POST_SIMILARITY", "0.56"))
+MAX_POST_SIMILARITY = float(os.getenv("MAX_POST_SIMILARITY", "0.45"))
 MIN_POST_QUALITY = float(os.getenv("MIN_POST_QUALITY", "72"))
 PRELIM_MIN_SCORE = float(os.getenv("PRELIM_MIN_SCORE", "38"))
 STRICT_BTC_FILTER = os.getenv("STRICT_BTC_FILTER", "1").lower() in {"1", "true", "yes"}

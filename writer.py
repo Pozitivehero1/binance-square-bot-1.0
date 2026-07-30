@@ -1664,13 +1664,21 @@ def _generate_compact_fallback_posts(
     btc,
     candidate_count: int,
 ) -> List[GeneratedPost]:
-    """Offline-safe concise posts used only when Mistral is unavailable."""
+    """Offline-safe concise posts used only when Mistral is unavailable.
+
+    The fallback deliberately uses a large combinatorial pool and advances through it
+    using the persistent post history. This prevents the old eight-post cycle while
+    keeping every factual number and trading level code-controlled.
+    """
+    import hashlib
+
     ind = mtf.tf_15m
     if ind is None:
         return []
     direction = score.direction
     recent_signal_types = memory.get_last_signal_types(24) if memory else []
     angles = detect_signal_angles(ind, direction, mtf)
+
     hooks = (
         "Импульс есть, но решает реакция на уровне",
         "Здесь важнее подтверждение, чем скорость движения",
@@ -1680,6 +1688,22 @@ def _generate_compact_fallback_posts(
         "Сначала условия сделки, потом эмоции",
         "Точка входа есть, но рынок должен её подтвердить",
         "Сильный график не отменяет дисциплину",
+        "Идея выглядит чисто, но вход ещё нужно заслужить",
+        "Не прогноз, а сценарий с понятной точкой отмены",
+        "Движение привлекает внимание, уровень даёт решение",
+        "Лучший вход здесь начинается с терпения",
+        "Сигнал есть, но спешка легко испортит соотношение риска",
+        "Сейчас важна не свеча, а поведение цены после неё",
+        "У рынка есть направление, у сделки должны быть условия",
+        "Сначала проверка уровня, затем решение по позиции",
+        "Картина интересная, но без подтверждения это лишь наблюдение",
+        "Не ловлю движение вслепую — жду рабочую реакцию",
+        "Сценарий готов, осталось дождаться исполнения условия",
+        "Цена у развилки: продолжение нужно подтвердить",
+        "Здесь преимущество появляется только после реакции",
+        "Сетап читается, но входить раньше рынка не стоит",
+        "Уровни заданы заранее, эмоциям места не остаётся",
+        "План короткий: подтверждение, вход, контроль риска",
     )
     interpretations = (
         "Не хочу догонять движение. Важнее увидеть, что цена принимает рабочую зону и не возвращается обратно.",
@@ -1690,6 +1714,22 @@ def _generate_compact_fallback_posts(
         "Главная задача — не пропустить движение, а не войти в момент, когда соотношение риска уже испорчено.",
         "Уровни дают понятную развилку: либо рынок подтверждает идею, либо вход отменяется.",
         "Этот сетап стоит оценивать по реакции цены, а не по уверенности в направлении.",
+        "Рабочее преимущество появляется лишь тогда, когда цена подтверждает сценарий, а стоп остаётся логичным.",
+        "Мне важнее получить понятный ответ от уровня, чем пытаться предсказать следующую свечу.",
+        "План допускает пропуск сделки, но не допускает вход без заранее понятной причины.",
+        "Движение уже началось, поэтому особенно важно не ухудшить вход погоней за ценой.",
+        "Сценарий остаётся актуальным только пока рынок сохраняет структуру и не нарушает точку отмены.",
+        "Здесь нет необходимости угадывать вершину или дно: достаточно дождаться исполнения условия.",
+        "Хороший сигнал — это не только направление, но и момент, когда риск можно измерить заранее.",
+        "Решение принимается по факту реакции, а не по желанию обязательно оказаться в позиции.",
+        "Если цена не подтверждает план, отсутствие сделки будет лучшим результатом.",
+        "Вход должен появиться из поведения рынка, а не из страха опоздать на движение.",
+        "Уровни уже показывают, где идея работает и где её следует без споров отменить.",
+        "Техническая картина помогает подготовиться, но окончательное решение остаётся за реакцией цены.",
+        "Сила движения важна, однако дисциплина входа здесь важнее самой скорости.",
+        "Рынок может продолжить движение без нас, и это лучше, чем открывать позицию с испорченным риском.",
+        "Смысл сценария в том, что подтверждение и отмена известны ещё до открытия позиции.",
+        "Не пытаюсь доказать правоту прогнозом — просто жду, выполнит ли рынок условия сделки.",
     )
     questions = (
         "Вы бы ждали ретест или работали сразу после подтверждения?",
@@ -1700,40 +1740,74 @@ def _generate_compact_fallback_posts(
         "Какое подтверждение для вас здесь обязательное?",
         "Считаете этот план достаточно чистым для входа?",
         "Что могло бы заставить вас пропустить эту сделку?",
+        "Вы бы дождались закрытия свечи или смотрели реакцию внутри неё?",
+        "Какой признак отменил бы для вас этот сценарий раньше стопа?",
+        "В такой ситуации вы входите одним ордером или набираете позицию частями?",
+        "Что для вас важнее перед входом: структура или усиление объёма?",
+        "Вы бы оставили все цели или сократили план до двух фиксаций?",
+        "Насколько строго вы ждёте подтверждение после сильного движения?",
+        "Такой сценарий вы бы торговали сразу или добавили ещё один фильтр?",
+        "Как вы обычно избегаете входа вслед за уже прошедшим импульсом?",
+        "Для вас эта точка больше похожа на вход или на зону наблюдения?",
+        "Вы бы перенесли стоп после первой цели или оставили исходный план?",
+        "Какой таймфрейм вы бы использовали для окончательного подтверждения?",
+        "Вам ближе ранний вход с меньшей позицией или ожидание полной реакции?",
+        "Что здесь сильнее влияет на решение: тренд или расположение цены относительно уровня?",
+        "Вы бы пропустили сделку, если подтверждение появится слишком далеко от входа?",
+        "Какой элемент этого плана вы проверили бы первым?",
+        "Считаете ли вы текущую структуру достаточной для контролируемого риска?",
     )
     layouts = ("setup_first", "levels_first", "trigger_first", "risk_first")
+    fact_priority = (
+        "setup", "trend", "volume", "mtf", "momentum", "vwap", "changes", "range", "btc", "location"
+    )
+
+    history_size = len(memory.items) if memory is not None else 0
+    # Use many attempts because strict validation and memory similarity may discard
+    # otherwise valid combinations. The returned batch size remains bounded.
+    max_attempts = max(24, candidate_count * 10)
     posts: List[GeneratedPost] = []
-    for index in range(max(2, candidate_count)):
-        angle = angles[index % len(angles)] if angles else choose_signal_angle(
-            ind, direction, mtf, recent_signal_types, index
-        )
+    seen: set[str] = set()
+
+    for attempt in range(max_attempts):
+        slot = history_size * 131 + attempt * 17 + candidate_count * 7
+        digest = hashlib.sha256(
+            f"fallback-v2|{slot}|{basic.upper()}|{direction}".encode("utf-8")
+        ).digest()
+
+        def pick_index(offset: int, size: int) -> int:
+            chunk = digest[offset : offset + 4]
+            return int.from_bytes(chunk, "big") % max(1, size)
+
+        if angles:
+            # Cover the available truthful signal angles within every batch, then
+            # rotate the starting point according to persistent history.
+            start_angle = (history_size * 3) % len(angles)
+            angle = angles[(start_angle + attempt) % len(angles)]
+        else:
+            angle = choose_signal_angle(ind, direction, mtf, recent_signal_types, slot)
+
         angle_copy = _angle_content(angle, ind, direction, mtf)
         facts = _fact_catalog(ind, mtf, direction, btc, angle)
-        fact_priority = [
-            "setup",
-            "trend",
-            "volume",
-            "mtf",
-            "momentum",
-            "vwap",
-            "changes",
-            "range",
-            "btc",
-        ]
         available = [key for key in fact_priority if key in facts]
-        shift = index % max(1, len(available))
-        rotated = available[shift:] + available[:shift]
-        selected = []
-        for key in ("setup", *rotated):
-            if key in facts and key not in selected:
-                selected.append(key)
-            if len(selected) >= 3:
-                break
+        if not available:
+            continue
+
+        # Select three distinct factual blocks. "setup" is included frequently but not
+        # obligatorily, so structure and vocabulary do not collapse into one template.
+        ranked_fact_indices = sorted(
+            range(len(available)),
+            key=lambda idx: digest[8 + (idx % 16)],
+        )
+        selected = [available[idx] for idx in ranked_fact_indices[:3]]
+        if "setup" in available and digest[7] % 3 != 0 and "setup" not in selected:
+            selected[-1] = "setup"
+
         candidate = {
-            "layout": layouts[index % len(layouts)],
-            "hook": hooks[index % len(hooks)],
-            "interpretation": interpretations[(index * 3) % len(interpretations)],
-            "question": questions[(index * 5) % len(questions)],
+            "layout": layouts[pick_index(4, len(layouts))],
+            "hook": hooks[pick_index(12, len(hooks))],
+            "interpretation": interpretations[pick_index(16, len(interpretations))],
+            "question": questions[pick_index(20, len(questions))],
             "fact_ids": selected,
         }
         post = _render_ai_post(
@@ -1753,9 +1827,13 @@ def _generate_compact_fallback_posts(
             fact_catalog=facts,
             trigger=angle_copy["confirmation"],
         )
+        signature = PostMemory.normalize_text(post)
         if not valid:
             logger.debug("Compact fallback rejected: %s", "; ".join(reasons))
             continue
+        if signature in seen:
+            continue
+        seen.add(signature)
         posts.append(
             GeneratedPost(
                 text=post,
@@ -1767,3 +1845,4 @@ def _generate_compact_fallback_posts(
         if len(posts) >= candidate_count:
             break
     return posts
+
