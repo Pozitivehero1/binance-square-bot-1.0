@@ -74,12 +74,13 @@ jobs:
           TOP_SYMBOLS: 80
           SHORTLIST_SIZE: 18
           FINAL_CANDIDATES: 10
-          MIN_RR: 1.5
-          MIN_MTF_ALIGN: 0.5
-          MIN_VOLUME_REL: 0.75
+          MIN_ADX: 17.5
+          MIN_RR: 1.25
+          MIN_MTF_ALIGN: 0.34
+          MIN_VOLUME_REL: 0.55
           MAX_FUNDING_ABS: 0.001
           STRICT_BTC_FILTER: 1
-          ENABLE_BALANCED_FALLBACK: 0
+          ENABLE_BALANCED_FALLBACK: 1
 
           POST_VARIANTS: 8
           POST_MIN_CHARS: 260
