@@ -1,1 +1,0 @@
-Clean Author Mode final patch. Author output is primary; legacy templates fallback only.
