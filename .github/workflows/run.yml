@@ -1,61 +1,74 @@
-name: Binance Bot
+name: Binance Square Bot
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
 
 jobs:
-  run:
+
+  run-bot:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 10
 
-      - uses: actions/setup-python@v5
+    env:
+      MISTRAL_API: ${{ secrets.MISTRAL_API }}
+      SQUARE_API: ${{ secrets.SQUARE_API }}
+      BINANCE_SQUARE_OPENAPI_KEY: ${{ secrets.BINANCE_SQUARE_OPENAPI_KEY }}
+
+      REFERRAL_LINK: ${{ secrets.REFERRAL_LINK }}
+
+      LOG_LEVEL: INFO
+
+      # Signal settings
+      COOLDOWN_MIN: 180
+      TOP_SYMBOLS: 80
+      MAX_FUNDING_ABS: 0.001
+
+      # AI Writer
+      ENABLE_AI_POLISH: "true"
+      USE_MISTRAL: "true"
+      MISTRAL_MODEL: "mistral-small-latest"
+
+      # Human post generation
+      AI_VARIANTS: 3
+      AI_HUMAN_MODE: "true"
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
-      - name: Install Binance Square Skill
+      - name: Install dependencies
         run: |
-          npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y
-          mkdir -p ~/.config/binance-square
-          echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Debug skill installation
+
+      - name: Check environment
         run: |
-          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
-          ls -la $GITHUB_WORKSPACE/.agents/skills/square-post/scripts/ || echo "Not found in GITHUB_WORKSPACE"
-          ls -la ./.agents/skills/square-post/scripts/ || echo "Not found in ./"
-          find . -name "post-image.mjs" -o -name "post-text.mjs" 2>/dev/null || echo "No scripts found"
+          python - <<'PY'
+          import os
 
-      - name: Cache published history
-        uses: actions/cache@v3
-        with:
-          path: published_history.json
-          key: published-history-${{ github.run_id }}
-          restore-keys: |
-            published-history-
+          print("MISTRAL_API:",
+                "OK" if os.getenv("MISTRAL_API") else "MISSING")
 
-      - name: Cache post memory
-        uses: actions/cache@v3
-        with:
-          path: post_memory.json
-          key: post-memory-${{ github.run_id }}
-          restore-keys: |
-            post-memory-
+          print("ENABLE_AI_POLISH:",
+                os.getenv("ENABLE_AI_POLISH"))
 
-      - run: pip install -r requirements.txt
+          print("USE_MISTRAL:",
+                os.getenv("USE_MISTRAL"))
+          PY
 
-      - run: python main.py
-        env:
-          MISTRAL_API: ${{ secrets.MISTRAL_API }}
-          SQUARE_API: ${{ secrets.SQUARE_API }}
-          BINANCE_SQUARE_OPENAPI_KEY: ${{ secrets.SQUARE_API }}
-          REFERRAL_LINK: ${{ secrets.REFERRAL_LINK }}
-          LOG_LEVEL: INFO
-          COOLDOWN_MIN: 180
-          TOP_SYMBOLS: 80
-          MAX_FUNDING_ABS: 0.001
+
+      - name: Run bot
+        run: |
+          python main.py
