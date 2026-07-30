@@ -85,7 +85,7 @@ jobs:
           POST_MIN_CHARS: 260
           POST_MAX_CHARS: 900
           MIN_POST_QUALITY: 78
-          MAX_POST_SIMILARITY: 0.56
+          MAX_POST_SIMILARITY: 0.45
 
           PUBLISH_IMAGES: 1
           PUBLISH_MEDIA_MODE: chart
