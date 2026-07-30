@@ -860,100 +860,76 @@ def _clean_ai_text(text: str) -> str:
 
 
 def _polish_with_ai(text: str, basic: str, levels: Dict[str, float], style: PostStyle, angle: SignalAngle) -> str:
-    """Rewrite deterministic draft into a human Binance Square post using Mistral.
-
-    The model is not allowed to invent market facts. It only improves delivery,
-    hooks and readability while preserving calculated values.
-    """
+    """Mistral Author Mode: creates the social post instead of polishing a template."""
     if not MISTRAL_API:
         return text
 
-    required = "\n".join(
-        (
-            f"Вход: {_fmt_price(levels['entry'])} USDT",
-            f"TP1: {_fmt_price(levels['tp1'])} USDT",
-            f"TP2: {_fmt_price(levels['tp2'])} USDT",
-            f"TP3: {_fmt_price(levels['tp3'])} USDT",
-            f"Стоп: {_fmt_price(levels['stop'])} USDT",
-            f"R/R: {levels['risk_reward']:.2f}",
-        )
-    )
+    facts = {
+        "ticker": f"${basic.upper()}",
+        "direction": angle.title,
+        "style": style.title,
+        "levels": {
+            "entry": _fmt_price(levels["entry"]),
+            "tp1": _fmt_price(levels["tp1"]),
+            "tp2": _fmt_price(levels["tp2"]),
+            "tp3": _fmt_price(levels["tp3"]),
+            "stop": _fmt_price(levels["stop"]),
+            "rr": f"{levels['risk_reward']:.2f}",
+        },
+    }
 
     prompt = f"""
-Ты пишешь посты для Binance Square от лица реального криптотрейдера.
+Ты автор криптопостов для Binance Square. Напиши новый пост с нуля от лица живого трейдера.
 
-Перепиши исходный черновик так, чтобы он выглядел как публикация живого человека, а не как текст от бота.
+Не редактируй старый текст. Старый черновик игнорируй — он содержит шаблоны.
 
-Главные цели:
-- первые 2 строки должны быть понятны даже человеку без глубокого теханализа;
-- первая строка должна создавать любопытство, конфликт или вопрос;
-- писать для социальной ленты, а не для торгового журнала;
-- добавить ощущение личного мнения трейдера;
-- вызвать желание обсудить пост в комментариях.
+Цель:
+остановить скролл, вызвать обсуждение и при этом сохранить точность сделки.
 
-СТРУКТУРА:
-1. Сильный хук (1-2 строки)
-2. Почему эта ситуация интересна сейчас
-3. 2-3 ключевых факта из анализа
-4. Сценарий сделки простыми словами
-5. Что сломает идею
+Правила:
+- первая строка должна быть наблюдением, мнением или конфликтом;
+- не начинай с "$COIN LONG/SHORT";
+- не используй стиль отчёта;
+- не используй слова: "матрица решения", "сверка контекста", "навигация позиции", "допуски", "ворота";
+- не придумывай новости и причины движения;
+- не меняй ни одной цифры сделки.
+
+Структура:
+1. Хук
+2. Почему ситуация интересна
+3. Короткое объяснение
+4. Сценарий
+5. Что отменит идею
 6. Вопрос аудитории
 
-Стиль автора: {style.title}
-Тема: {angle.title}
+Данные:
+{json.dumps(facts, ensure_ascii=False, indent=2)}
 
-ЖЁСТКИЕ ОГРАНИЧЕНИЯ:
-- не придумывай новости, инсайды, китов и внешние причины движения;
-- не добавляй гарантии прибыли;
-- не меняй направление сделки;
-- не меняй ни одного числового значения;
-- сохрани тикер ${basic.upper()};
-- обязательно оставь уровни сделки.
-
-Запрещённые признаки AI:
-- "анализ показывает";
-- "следует отметить";
-- "сверка контекста";
-- "навигация по позиции";
-- "параметры идеи" как заголовок;
-- одинаковые шаблонные вступления;
-- сухой отчёт из терминала;
-- длинные технические блоки в начале поста.
-
-Обязательные значения:
-{required}
-
-Черновик:
+Старый черновик для справки:
 {text}
 """.strip()
 
-    response = requests.post(
-        "https://api.mistral.ai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {MISTRAL_API}", "Content-Type": "application/json"},
-        json={
-            "model": os.getenv("MISTRAL_MODEL", "mistral-small-latest"),
-            "messages": [
-                {"role": "system", "content": "Ты редактор криптоконтента. Пиши естественно, кратко и по делу."},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.9,
-            "max_tokens": 1000,
-        },
-        timeout=45,
-    )
-    response.raise_for_status()
-    polished = _clean_ai_text(response.json()["choices"][0]["message"]["content"])
+    try:
+        response = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {MISTRAL_API}", "Content-Type": "application/json"},
+            json={
+                "model": os.getenv("MISTRAL_MODEL", "mistral-small-latest"),
+                "temperature": 0.85,
+                "messages": [
+                    {"role": "system", "content": "Ты пишешь естественные криптопосты для социальной сети."},
+                    {"role": "user", "content": prompt},
+                ],
+            },
+            timeout=45,
+        )
+        response.raise_for_status()
+        result = response.json()["choices"][0]["message"]["content"].strip()
+        return _fix_ticker_spacing(result)
+    except Exception:
+        logger.exception("Mistral author mode failed")
+        return text
 
-    if not _contains_required_content(polished, levels):
-        raise ValueError("AI response lost mandatory trade levels")
-    if f"${basic.upper()}" not in polished.upper():
-        raise ValueError("AI response lost the ticker")
-    return polished
-
-
-# ---------------------------------------------------------------------------
-# Public generation API
-# ---------------------------------------------------------------------------
 def generate_post_draft(
     *,
     symbol: str,
