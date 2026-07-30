@@ -158,7 +158,7 @@ class DataFetcher:
             raise RuntimeError(f"All Binance endpoints failed: {last_error}")
         rows = response.json()
         if not isinstance(rows, list) or len(rows) < 30:
-            logger.warning("Binance returned insufficient data for %s %s", symbol, interval)
+            logger.info("Binance returned insufficient history for %s %s", symbol, interval)
             return None
 
         frame = pd.DataFrame(
@@ -273,7 +273,7 @@ class DataFetcher:
             )
 
         if frame is None:
-            logger.error("No market data for %s %s", symbol, interval)
+            logger.info("No usable market history for %s %s", symbol, interval)
             return None
 
         with _cache_lock:

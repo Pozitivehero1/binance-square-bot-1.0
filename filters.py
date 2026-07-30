@@ -44,12 +44,12 @@ class SignalFilter:
 
     STRICT_THRESHOLDS = {
         "min_score": float(os.getenv("MIN_SIGNAL_SCORE", "54")),
-        "min_adx": float(os.getenv("MIN_ADX", "18")),
+        "min_adx": float(os.getenv("MIN_ADX", "17.5")),
         "min_atr_pct": float(os.getenv("MIN_ATR_PCT", "0.25")),
         "max_atr_pct": float(os.getenv("MAX_ATR_PCT", "7.0")),
         "min_rr": float(os.getenv("MIN_RR", "1.25")),
         "min_mtf_align": float(os.getenv("MIN_MTF_ALIGN", "0.34")),
-        "min_volume_rel": float(os.getenv("MIN_VOLUME_REL", "0.65")),
+        "min_volume_rel": float(os.getenv("MIN_VOLUME_REL", "0.55")),
     }
     BALANCED_THRESHOLDS = {
         "min_score": float(os.getenv("BALANCED_MIN_SIGNAL_SCORE", "50")),

@@ -19,6 +19,9 @@ Offline verification completed on 2026-07-31:
 - Mobile chart generation: passed
 - Publisher command and environment-key handoff: passed
 - Balanced profile unit check: passed
+- Short-history timeframe prefilter: implemented (60 closed candles required)
+- Near-miss diagnostic logging: implemented
+- Strict workflow thresholds synchronized with code defaults
 - No publication was attempted
 
 A real market DRY_RUN was also attempted, but the execution sandbox cannot resolve

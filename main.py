@@ -49,7 +49,7 @@ FINAL_CANDIDATES = int(os.getenv("FINAL_CANDIDATES", "10"))
 DATA_WORKERS = max(1, min(int(os.getenv("DATA_WORKERS", "6")), 12))
 KLINE_LIMIT = max(220, min(int(os.getenv("KLINE_LIMIT", "260")), 500))
 MAX_FUNDING_ABS = float(os.getenv("MAX_FUNDING_ABS", "0.001"))
-ENABLE_BALANCED_FALLBACK = os.getenv("ENABLE_BALANCED_FALLBACK", "0").lower() in {
+ENABLE_BALANCED_FALLBACK = os.getenv("ENABLE_BALANCED_FALLBACK", "1").lower() in {
     "1", "true", "yes"
 }
 POST_VARIANTS = max(4, min(int(os.getenv("POST_VARIANTS", "8")), 16))
@@ -66,8 +66,19 @@ def _fetch_symbol_timeframes(symbol: str, intervals: Iterable[str]) -> Dict[str,
     frames: Dict[str, pd.DataFrame] = {}
     for interval in intervals:
         frame = get_data(symbol, interval=interval, limit=KLINE_LIMIT)
-        if frame is not None:
-            frames[interval] = frame
+        if frame is None:
+            continue
+        # Every indicator set uses EMA-50 and other rolling windows. Keeping
+        # shorter histories would only create noisy warnings and incomplete setups.
+        if len(frame) < 60:
+            logger.info(
+                "Skip %s %s: only %s closed candles, 60 required",
+                symbol,
+                interval,
+                len(frame),
+            )
+            continue
+        frames[interval] = frame
     return frames
 
 
@@ -298,6 +309,27 @@ def _best_post_variant(
     return best_draft, best_report
 
 
+
+def _log_near_misses(candidates: List[MultiTimeframeIndicators], limit: int = 3) -> None:
+    """Explain the strongest rejected setups without changing publication rules."""
+    signal_filter = SignalFilter(profile="strict")
+    near = []
+    for mtf in candidates:
+        score = signal_filter.evaluate(mtf)
+        if score is None:
+            continue
+        near.append((score.total, mtf.symbol, score))
+    near.sort(key=lambda item: item[0], reverse=True)
+    for total, symbol, score in near[: max(1, limit)]:
+        reasons = "; ".join(score.gate_reasons) if score.gate_reasons else "score below threshold"
+        logger.info(
+            "Near miss %s score=%.1f direction=%s: %s",
+            symbol,
+            total,
+            score.direction,
+            reasons,
+        )
+
 def _cleanup_files(paths: Iterable[Optional[str]]) -> None:
     for path in paths:
         if not path:
@@ -361,7 +393,13 @@ def main() -> int:
             profile="balanced",
         )
     if not ranked:
-        logger.info("No candidate passed strict or balanced signal gates")
+        if ENABLE_BALANCED_FALLBACK:
+            logger.info("No candidate passed strict or balanced signal gates")
+        else:
+            logger.info(
+                "No candidate passed strict gates; balanced fallback is disabled"
+            )
+        _log_near_misses(candidates)
         return 0
 
     logger.info(
