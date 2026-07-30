@@ -983,11 +983,13 @@ def generate_post_draft(
     }
 
     post = None
+    author_mode_used = False
     if ENABLE_AI_POLISH and MISTRAL_API:
         try:
             candidate = author_post(author_data)
             if validate(candidate, author_data):
                 post = candidate
+                author_mode_used = True
         except Exception as exc:
             logger.warning("Author mode failed, fallback enabled: %s", exc)
 
@@ -1012,7 +1014,7 @@ def generate_post_draft(
     hashtags = varied_hashtags(basic, direction, variant_index)
     full_post = _fix_ticker_spacing(f"{post}\n\n{hashtags}").strip()
 
-    if len(full_post) > POST_MAX_CHARS:
+    if len(full_post) > POST_MAX_CHARS and not author_mode_used:
         compact_style = next(item for item in POST_STYLES if item.id == "compact_brief")
         level_block = _level_block(levels, plan_title, compact_style, variant_index)
         post = _render_style(
