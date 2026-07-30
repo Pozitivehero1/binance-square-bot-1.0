@@ -1,0 +1,21 @@
+Offline verification completed on 2026-07-30:
+- Python syntax compilation: passed for all modules
+- LONG strict setup: passed
+- SHORT strict setup: passed
+- Required blocks Entry / Targets / Stop-loss: passed
+- Cashtag count $TICKER: 1-3 occurrences, passed
+- Mistral JSON batch mock: one request, four valid candidates
+- Fact lock and unexpected-number guard: passed
+- Deterministic fallback: 4 layouts, 7 signal angles
+- Maximum fallback similarity: 0.334
+- Average fallback length: 604 characters
+- Card generation: passed
+- Mobile chart generation: passed
+- Publisher command and environment-key handoff: passed
+- Balanced profile unit check: passed
+- No publication was attempted
+
+A real market DRY_RUN was also attempted, but the execution sandbox cannot resolve
+external DNS names. Binance and Mistral network calls therefore could not be executed
+from this environment. GitHub Actions and normal internet-connected hosts are not subject
+to this sandbox restriction.
