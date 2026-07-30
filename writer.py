@@ -27,6 +27,7 @@ from content_variation import (
 )
 from indicators import build_trade_levels
 from memory import PostMemory
+from ai_pipeline import SYSTEM_PROMPT as REACH_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
