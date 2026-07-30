@@ -1,9 +1,0 @@
-__pycache__/
-*.py[cod]
-.env
-.venv/
-venv/
-post_memory.json
-published_history.json
-*.log
-.DS_Store
