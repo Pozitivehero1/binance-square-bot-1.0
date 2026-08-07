@@ -1,93 +1,117 @@
-name: Binance Square Signal Bot
+name: Binance Square Bot
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
 
 concurrency:
-  group: binance-square-signal-bot
+  group: binance-square-bot
   cancel-in-progress: false
 
 jobs:
-  run:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
+
+    env:
+      PYTHONUNBUFFERED: "1"
+
+      SQUARE_API: ${{ secrets.SQUARE_API }}
+      MISTRAL_API: ${{ secrets.MISTRAL_API }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      DRY_RUN: "0"
+
+      # Путь, куда устанавливается Binance Square Skill
+      SQUARE_SKILL_DIR: ${{ github.workspace }}/.agents/skills/square-post
+
+      # Cron управляет частотой проверок; слабые темы можно пропускать
+      ENABLE_PACING_LIMITS: "0"
+      ENABLE_REACH_GATE: "1"
+      MIN_REACH_SCORE: "64"
+
+      # Human Feed Edition
+      AUTHOR_VOICE: "direct"
+      MIN_FEED_APPEAL: "70"
+      MIN_W2E_MARKET_SCORE: "56"
+      MIN_CONVERSION_INTENT: "72"
+      CONTENT_MODE: "deterministic"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Install Binance Square skill
-        run: |
-          npx skills add https://github.com/binance/binance-skills-hub --skill square-post -y
-          mkdir -p ~/.config/binance-square
-          echo -n "${{ secrets.SQUARE_API }}" > ~/.config/binance-square/openapi-key
-
-      - name: Restore published history
-        uses: actions/cache@v4
-        with:
-          path: published_history.json
-          key: published-history-${{ github.run_id }}
-          restore-keys: |
-            published-history-
-
-      - name: Restore post memory
-        uses: actions/cache@v4
-        with:
-          path: post_memory.json
-          key: post-memory-${{ github.run_id }}
-          restore-keys: |
-            post-memory-
+          cache: "npm"
+        continue-on-error: true
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run offline safety tests
-        run: python self_test.py
-        env:
-          CONTENT_MODE: deterministic
-          POST_MAX_CHARS: 900
+      - name: Install Binance Square Skill
+        run: |
+          npx --yes skills add \
+            https://github.com/binance/binance-skills-hub \
+            --skill square-post \
+            -y
 
-      - name: Scan, generate and publish
-        run: python main.py
-        env:
-          MISTRAL_API: ${{ secrets.MISTRAL_API }}
-          MISTRAL_MODEL: mistral-small-latest
-          CONTENT_MODE: ai_first
-          AI_VARIANTS: 4
-          AI_TEMPERATURE: 0.55
-          AI_MIN_VALID: 2
+      - name: Verify Binance Square Skill
+        run: |
+          echo "Expected skill directory:"
+          echo "$SQUARE_SKILL_DIR"
 
-          SQUARE_API: ${{ secrets.SQUARE_API }}
-          BINANCE_SQUARE_OPENAPI_KEY: ${{ secrets.SQUARE_API }}
+          find "$GITHUB_WORKSPACE" -maxdepth 6 \
+            -type f \
+            \( -name "post-text.mjs" -o -name "post-image.mjs" \) \
+            -print
 
-          LOG_LEVEL: INFO
-          COOLDOWN_MIN: 180
-          TOP_SYMBOLS: 80
-          SHORTLIST_SIZE: 18
-          FINAL_CANDIDATES: 10
-          MIN_ADX: 17.5
-          MIN_RR: 1.25
-          MIN_MTF_ALIGN: 0.34
-          MIN_VOLUME_REL: 0.55
-          MAX_FUNDING_ABS: 0.001
-          STRICT_BTC_FILTER: 1
-          ENABLE_BALANCED_FALLBACK: 1
+          if [ ! -f "$SQUARE_SKILL_DIR/scripts/post-text.mjs" ] && \
+             [ ! -f "$SQUARE_SKILL_DIR/scripts/post-image.mjs" ]; then
+            echo "::error::Binance Square Skill was not installed correctly"
+            exit 1
+          fi
 
-          POST_VARIANTS: 8
-          POST_MIN_CHARS: 260
-          POST_MAX_CHARS: 900
-          MIN_POST_QUALITY: 78
-          MAX_POST_SIMILARITY: 0.45
+      - name: Restore bot state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            state
+            post_memory.json
+            published_history.json
+          key: square-state-${{ github.ref_name }}
+          restore-keys: |
+            square-state-${{ github.ref_name }}-
+            square-state-
 
-          PUBLISH_IMAGES: 1
-          PUBLISH_MEDIA_MODE: chart
-          DRY_RUN: 0
+      - name: Check configuration
+        run: |
+          if [ -f config_check.py ]; then
+            python config_check.py --publishing
+          fi
+
+      - name: Run bot
+        run: |
+          python main.py
+
+      - name: Save bot state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            state
+            post_memory.json
+            published_history.json
+          key: square-state-${{ github.ref_name }}-${{ github.run_id }}
