@@ -1,0 +1,69 @@
+HUMAN FEED / W2E v6 OFFLINE TESTS — 2026-08-07
+
+self_test.py
+- LONG: PASS | technical score 84.9 | R/R 2.02 | post quality 92.9
+- SHORT: PASS | technical score 87.8 | R/R 2.76 | post quality 94.6
+- diversity: PASS | 8 layouts | 8 formats | 5 visuals | 7 signal angles
+- Mistral fact-lock: PASS | one batched request | deterministic fallback retained
+- balanced fallback: PASS
+- publisher command: PASS
+
+attention_test.py
+- hot attention: 64.5 | volume x2.73
+- quiet attention: 16.3 | volume x0.70
+- result: PASS
+
+w2e_test.py
+- hot market score: 82.1
+- ENA-like live-alt score: 61.1 (threshold 56)
+- cold market score: 21.5
+- useful post conversion score: 88.4
+- spam post conversion score: 28.0
+- result: PASS
+
+human_copy_test.py
+- BICO-like event: +7.47% / 15m | +11.61% / 45m | volume x18.08
+- selected format: crowd_trap
+- selected text length: 336 chars
+- post quality: 96.3
+- robotic phrases: none
+- result: PASS
+
+copy_matrix_test.py
+- aligned LONG: PASS
+- aligned SHORT: PASS
+- counter-trend LONG after sharp sell-off: PASS
+- counter-trend SHORT after sharp rise: PASS
+- no logically wrong “chase SHORT after rise / chase LONG after sell-off” headlines
+- result: PASS
+
+repetition_test.py
+- 150 sequential generated posts
+- max similarity: 0.511 (gate 0.52)
+- average similarity: 0.365
+- p95 similarity: 0.471
+- result: PASS
+
+cron_test.py
+- stable state paths: PASS
+- pacing logic: PASS
+- reach gate: PASS
+- overlap lock: PASS
+
+config_check.py
+- ai_first + Mistral key configuration: PASS
+- W2E threshold relationship validation: PASS
+- warnings: 0 in test configuration
+
+preview_gallery.py
+- 5 sample posts generated
+- 5 media previews generated
+- human charts show only decision level / first target / invalidation
+- result: PASS
+
+GitHub Actions workflow
+- YAML parse: PASS
+- CONTENT_MODE=ai_first: PASS
+
+No real Binance Square publication was attempted during testing.
+No live Binance/Mistral network call was required by the offline suite.
